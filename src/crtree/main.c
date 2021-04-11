@@ -55,13 +55,13 @@ int main(int argc, char **argv)
           sleep(3);
 
           char* args[w->n_args+1];
-          //args[0] = w->archivo;
-          args[0] = "ls";
+          args[0] = w->archivo;
+          //args[0] = "ls";
           for(int i=1;i<w->n_args+1;i++){
             args[i+1] = w->params[i];
           }  
           args[w->n_args+1]= NULL;  
-          execvp("ls", args); 
+          execvp(w->archivo, args); 
         }
       
       waitpid(child_worker, &status, 0);

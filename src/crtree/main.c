@@ -25,42 +25,43 @@ int main(int argc, char **argv)
   data = read_file(argv[1]); 
   char*** proceso = data->lines;
 
-  
-  
-  printf("indice %i\n",index);
-  int continuar =1;
 
-  while(continuar){
+  while(1){
 
     tipo = proceso[index][0][0];
 
+    if(tipo=='M' || tipo=='R'){ 
 
-    if(tipo=='M' || tipo=='R'){
-     
-      //Procesos Manager
-     
+      //Procesos Manager     
       mg = create_manager(mg, proceso,index);
-
       index = manage(mg,proceso,index);
       if(index==-1){
         free(mg);  
         input_file_destroy(data);
         return 0;
-      }   
-      
+
+      }        
     }
-    //Proceso worker
+    
     else if (tipo=='W'){
+      //Proceso worker
       int status;
       struct timespec start, end;
-      Worker* w = create_worker(proceso,index);
-       
+      Worker* w = create_worker(proceso,index);       
       clock_gettime(CLOCK_MONOTONIC, &start);      
       pid_t child_worker = fork();
-        // Proceso hijo ejecuta el programa
+      // Proceso hijo ejecuta el programa
       if (child_worker == 0) {                  
           sleep(3);
-          execl("/bin/date", "date", 0, (char*) NULL); 
+
+          char* args[w->n_args+1];
+          //args[0] = w->archivo;
+          args[0] = "ls";
+          for(int i=1;i<w->n_args+1;i++){
+            args[i+1] = w->params[i];
+          }  
+          args[w->n_args+1]= NULL;  
+          execvp("ls", args); 
         }
       
       waitpid(child_worker, &status, 0);
@@ -73,17 +74,14 @@ int main(int argc, char **argv)
       {
           w->exit_status = WEXITSTATUS(status);        
           printf("Exit status of the child was %d\n", w->exit_status);
-      }
-     
+      }     
       
-      write_file(w);         
-    
+      write_file(w);  
       free_worker(w); 
       free(mg);
       input_file_destroy(data);
       return 0;
-    }
-    
+    }   
 
   }
 
@@ -101,16 +99,14 @@ Manager* create_manager(Manager* mg,char*** proceso,int index){
 
 Worker* create_worker(char*** proceso,int index){
   Worker* wk = malloc(sizeof(Worker));
-  wk->archivo =proceso[index][1];    
+  wk->archivo = strdup(proceso[index][1]);    
   wk->index = index;
   wk->n_args = atoi(proceso[index][2]);
   wk->params = malloc(wk->n_args * sizeof(char*));    
   wk->exit_status = 0;
   wk->time = 0;
-  
   for(int i = 0; i < wk->n_args; i++) {
-        wk->params[i]= malloc(sizeof(proceso[index][3+i]));
-        wk->params[i] = proceso[index][3+i];
+        wk->params[i] = strdup(proceso[index][3+i]);
       }
   return wk;
 }
@@ -166,6 +162,8 @@ void write_file(Worker* w){
     fclose(file);
 }
 
+
+//Función que libera memoria
 void free_worker(Worker* w){
   printf("%i\n",w->n_args);
 

@@ -7,4 +7,7 @@
 int main(int argc, char **argv)
 {
   printf("Hello World!\n");
+  sleep(10);
+  printf("Hello World!\n");
+  return 10;
 }

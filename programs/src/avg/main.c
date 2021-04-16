@@ -7,9 +7,11 @@
 int main(int argc, char *argv[])
 {
     int sum;
+    float avg;
     sum = 0;
     for (int counter = 1; argv[counter] != NULL; ++counter)     {
         sum += atoi(argv[counter]);
     }
-    printf("Resultado: %d\n", sum);
+    avg = sum/(float)(argc - 1);
+    return avg;
 }

@@ -53,39 +53,12 @@ InputFile* read_file(char* filename)
   // Parse each line
   int index = 0;
   while (fgets(buffer, BUFFER_SIZE, file_pointer)) {
-    input_file->lines[index++] = split_by_sep(buffer, ",");
+    input_file->lines[index++] = split_by_sep(buffer, " ");
   }
 
   // Close the file and return the struct
   fclose(file_pointer);
   return input_file;
-}
-
-InputFileChild* read_file_child(char* filename)
-{
-  // Read the file
-  printf("FILENAME HIJO: %s\n", filename);
-  FILE* fp = fopen(filename, "r");
-
-  char buffer[BUFFER_SIZE];
-  fgets(buffer, BUFFER_SIZE, fp);
-
-  // Define the struct and prepare its attributes
-  InputFileChild* input_file_child = malloc(sizeof(InputFileChild));
-  input_file_child->lines = calloc(atoi(buffer), sizeof(char));
-  input_file_child->len = atoi(buffer);
-
-  // Parse each line
-  int index2 = 0;
-  while (fgets(buffer, BUFFER_SIZE, fp)) {
-    printf("BUFFER: %s\n", buffer);
-    printf("index %i", index2);
-    input_file_child->lines[index2++] = buffer;
-  }
-  input_file_child->count = index2;
-
-  fclose(fp);
-  return input_file_child;
 }
 
 /*
@@ -106,21 +79,4 @@ void input_file_destroy(InputFile* input_file)
 
   // Free the input_file itself
   free(input_file);
-}
-
-void input_file_destroy_child(InputFileChild* input_file_child)
-{
-  // Free each separated data line and its contents
-  // for (int i = 0; i < input_file_child->len; i++) {
-    // for (int j = 0; j < MAX_SPLIT; j++) {
-    //   free(input_file_child->lines[i][j]);
-    // }
-  //   free(input_file_child->line);
-  // }
-
-  // Free the lines array
-  free(input_file_child->lines);
-
-  // Free the input_file_child itself
-  free(input_file_child);
 }

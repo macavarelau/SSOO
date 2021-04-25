@@ -20,6 +20,7 @@ typedef struct manager {
     int root;
     int finished_childs;
     pid_t childs[255]; 
+    
 
 } Manager;
 
@@ -32,7 +33,10 @@ void join(Manager* mg, char*** proceso);
 
 int manage(Manager* mg, char*** proceso, int index);
 void free_manager(Manager* m);
-void write_father_file(Manager* mg);
-int append_father_file(char* filePath, InputFileChild* child_data, int c);
 Worker* create_worker(char*** proceso, int index);
 Manager* create_manager(Manager* mg,char*** proceso, int index);
+void intHandler(int x);
+void abrtHandler(int x);
+void alarm_handler(int x);
+void kill_childs();
+void child_handler();

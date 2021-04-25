@@ -22,10 +22,12 @@ static volatile int child_worker_done = 0;
 Manager** man;
 
 
+
 int main(int argc, char **argv){ 
 
   InputFile* data = read_file(argv[1]); 
   Manager* mg = malloc(sizeof(Manager));
+  
   man = mg;
   int index = atoi(argv[2]);
   char*** proceso = data->lines;
@@ -35,14 +37,18 @@ int main(int argc, char **argv){
 
   while( keepRunning ){
     tipo = proceso[index][0][0];
+    printf("Tipo: %c\n",tipo);
 
     if(tipo=='M' || tipo=='R'){    
 
       mg = create_manager(mg, proceso,index);
       index = manage(mg,proceso,index);   
+      
+      
+
+
 
       if(index==-1){
-
         join(mg,proceso);       
         free(mg);  //libera la memoria utilizara para el proceso manager
         input_file_destroy(data); // elimina la estructura de data
@@ -103,6 +109,9 @@ int main(int argc, char **argv){
   mg->timeout = atoi(proceso[index][1]);
   mg->n_args = atoi(proceso[index][2]);
   mg->index=index;  
+  for(int i=0 ; i<mg->n_args;i++){     
+      mg->childs[i]=0;
+  }
   mg->finished_childs = 0;
   return mg;
 } 
@@ -126,36 +135,33 @@ Worker* create_worker(char*** proceso,int index){
 
 
 int manage(Manager* mg,char*** proceso,int index){ 
-  pid_t child_pid ;
-
+  pid_t child_pid = 0 ;
+  
   
   for (int i=0; i<mg->n_args;i++){    
-    index = atoi(proceso[mg->index][3+i]);
-    printf("%i\n",index);    
-    char tipo = proceso[index][0][0];
-    printf("%c tipo fork\n",tipo);
+    index = atoi(proceso[mg->index][3+i]); 
     child_pid = fork();
     mg->childs[i] = (pid_t) child_pid;
     if(child_pid==0){       
       return index;
     }
   }
+  
 
   signal(SIGALRM, alarm_handler);
   signal(SIGCHLD, child_handler); 
 
   alarm(mg->timeout);   
   
-  int pid;
+  int pid = -1;
   while(mg->finished_childs<mg->n_args){  
     pause();
     if (is_timeout){
       break;
     }
     else if (child_done){    
-      printf("child finished normally\n");
+      printf("Hijo de %i terminó\n",getpid());
       mg->finished_childs ++;
-      printf("%i  %i\n", mg->finished_childs, mg->n_args);
       
       for(int i=0 ; i<mg->n_args;i++){
         if(pid==mg->childs[i]){
@@ -221,12 +227,12 @@ void join(Manager* m,char*** proceso) {
 
     for (int i=0;i< m->n_args;i++){        
         sprintf(filename, "%c.txt", proceso[m->index][3+i][0]);
-        printf("\n\nfilename: %s\n\n",filename);
+        printf("Nombre archivo: %s\n",filename);
         child_file = fopen( filename, "r+");
         if (child_file == NULL) {
           printf("\nError al leer el archivo '%s'.\n", filename);
-          exit(0);
-        }
+       
+        }else{
         c = fgetc(child_file);
         while (c != EOF)
         {       
@@ -234,6 +240,7 @@ void join(Manager* m,char*** proceso) {
           c = fgetc(child_file);     
         }            
         fclose(child_file);
+        }
     } 
     fclose(ffp);
 
@@ -241,7 +248,7 @@ void join(Manager* m,char*** proceso) {
 
 
 void free_worker(Worker* w){
-  printf("%i\n",w->n_args);
+ 
 
   for(int i = 0; i<w->n_args;i++){        
     free(w->params[i]); 
@@ -252,56 +259,13 @@ void free_worker(Worker* w){
 }
 
 
-//MANEJO ARCHIVOS
-
-void write_father_file(Manager* mg){
-
-    FILE *father_file;
- 
-    char filename[64];
-    sprintf(filename, "%i.txt", mg->index);
-    father_file = fopen( filename, "w");
-
-    // exiting program 
-    if (father_file == NULL) {
-        printf("Error!");
-        exit(1);
-    }
-    fclose(father_file);
-}
-
-int append_father_file(char* filePath, InputFileChild* child_data, int c) {
-
-    FILE *ffp;
-    printf("FILEPATH PADRE: %s\n", filePath);
-
-    ffp = fopen(filePath, "a");
-
-    if (ffp == NULL) {
-        printf("\nError al leer el archivo '%s'.\n", filePath);
-        exit(0);
-    }
-
-    for (int k=0; k<child_data->count; k++) {
-      printf("Lineas: %i\n", child_data->count);
-      printf("Linea: %s\n", child_data->lines[k]);
-      if (c>0 && k==0) {
-        fprintf(ffp,"\n%s", child_data->lines[k]);
-      } else {
-        fprintf(ffp,"%s", child_data->lines[k]);
-      }
-    }
-
-    fclose(ffp);
-
-    return 0;
-}
-
 
 //SEÑALES
 
+
 //Handler de SIGINT
 void intHandler(int x) {
+  printf("tipo es %c\n", tipo);
   if (tipo=='R'){
     keepRunning=0;       
     kill(getpid(),SIGABRT);    
@@ -355,10 +319,9 @@ void kill_childs(){
   for(int i=0 ; i< mg->n_args ; i++){
       pid = mg->childs[i];  
       if (pid){      
-      result = waitpid(pid, NULL, WNOHANG);
+        result = waitpid(pid, NULL, WNOHANG);
         if (result == 0) {
-            // child still running, so kill it
-            printf("killing child\n");
+            printf("Matando al hijo %i de %i\n",pid,getpid());
             kill(pid, SIGABRT);
             wait(NULL);        
         }
@@ -367,7 +330,7 @@ void kill_childs(){
 }
 
 void child_handler(int x){
-  child_done =1;    
+  child_done =1;  
 }
 
 

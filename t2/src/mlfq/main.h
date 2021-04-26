@@ -1,16 +1,5 @@
 #pragma once
 
-typedef struct queue {
-    int p;
-    Process* fila[2048];
-    int quantum;
-    //primera posición de la lista
-    int inicio;
-    //primer espacio libre        
-    int final;
-
-} Queue;
-
 typedef struct process{
     int pid;    
     char* name;
@@ -52,7 +41,23 @@ typedef struct process{
     int tiempo_A;
     //tiempo que lleva waiting antes de ceder
     int tiempo_B;
-}Process;
+} Process;
 
-void write_output(char* name, Process* process);
+typedef struct queue {
+    int p;
+    Process* fila[2048];
+    int quantum;
+    //primera posición de la lista
+    int inicio;
+    //primer espacio libre        
+    int final;
+
+} Queue;
+
+
 Process* create_process(char** info);
+void print_colas(Queue** colas, int Q);
+void write_output(char* name, Process* process);
+void search_process(int len, char*** sorted_array, Queue** colas, int ciclo, int indice_final);
+void create_csv(char* output);
+void write_csv(Process* pro, char* output);

@@ -49,7 +49,7 @@ int main(int argc, char **argv)
       //timepo cpu en este turno
       proceso_actual->tiempo_A ++;
       //proceso termina hay que ponerle finished
-      if(proceso_actual->cycles==proceso_actual->cpu_time && proceso_actual->tiempo_A!=colas[proceso_actual->p]->quantum){
+      if(proceso_actual->cycles==proceso_actual->cpu_time){
         printf("CICLOS: %i, CPU TIME: %i\n\n", proceso_actual->cycles, proceso_actual->cpu_time);
         printf("%s termino\n", proceso_actual->name);        
         ocupado = 0;
@@ -71,15 +71,16 @@ int main(int argc, char **argv)
         printf("%s consumió su quantum\n",proceso_actual->name);
         ocupado=0;
         proceso_actual->interruptions++;
-        printf("INTERRUPCIÓN: %i", proceso_actual->interruptions);
-        proceso_actual = out_cpu(proceso_actual);    
-
+        printf("cpu time: %i, tiempo_a: %i", proceso_actual->cycles, proceso_actual->tiempo_A);
+        
         //controlamos caso borde en que el quantum termina al mismo tiempo que cede la cpu
-        if (proceso_actual->tiempo_A==proceso_actual->wait || proceso_actual->cpu_time==proceso_actual->cycles){
-           proceso_actual->state = WAITING;         
-        }else{
-           proceso_actual->state = READY; 
+        if (proceso_actual->tiempo_A==proceso_actual->wait){
+          proceso_actual->state = WAITING;
         }
+        else{
+          proceso_actual->state = READY; 
+        }
+        proceso_actual = out_cpu(proceso_actual);    
 
 
         //Si es posible baja al proceso a una cola de menor prioridad 
@@ -133,8 +134,10 @@ int main(int argc, char **argv)
             proceso = colas[i]->fila[j];          
             proceso->waiting_time ++;
               //chequeamos si paso su tiempo S
-            if (ciclo - proceso->start > S-1 && proceso->p!=0){
+            if (ciclo - proceso->start > S && proceso->p!=0){
+              //AQUI EXPLOTA! HAY QUE VER COMO VER EL TIEMPO;
               //sacarlo de su cola
+              printf("PROCESO: %s EXPLOTA?", proceso->name);
               colas[proceso->p]->fila[colas[proceso->p]->inicio%N] = 0;
               colas[proceso->p]->inicio ++;
 

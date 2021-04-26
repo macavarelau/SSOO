@@ -1,5 +1,6 @@
 #pragma once
 
+
 typedef struct process{
     int pid;    
     char* name;
@@ -33,19 +34,21 @@ typedef struct process{
     int cpu_time;  
     //tiempo total que estuvo waiting acumulado
     int io_time;
-    //tiempo que lleva en esta ejecución
-    int turn_time;
+
 
     //Estos se reinician
+   
     //tiempo que lleva en cpu antes de ceder
     int tiempo_A;
     //tiempo que lleva waiting antes de ceder
     int tiempo_B;
 } Process;
 
+
 typedef struct queue {
     int p;
     Process* fila[2048];
+    
     int quantum;
     //primera posición de la lista
     int inicio;
@@ -54,10 +57,32 @@ typedef struct queue {
 
 } Queue;
 
-
-Process* create_process(char** info);
+//imprime los procesos de cada cola con sus estado
 void print_colas(Queue** colas, int Q);
+
+//crea el sorted array
+char*** create_sorted_array(InputFile* data);Queue* process_to_cpu(Queue* cola, int index);
+
+//crea las Q colas
+Queue** create_queues(int Q, int q);
+
+//crea un proceso
+Process* create_process(char** info);
+
+//pasa tiempo S y sube a la primera.
+Queue** first_priority(Queue** colas, Process* proceso);
+
+Queue** search_process(int len, char*** sorted_array, Queue** colas, int ciclo, int indice_final);
+
+//cambia atributos de proceso que esta WAITING
+Process* process_waiting(Process* process);
+
+//reinicia atributos cuando un proceso sale de la cpu (cede o interrumpido)
+Process* out_cpu(Process* process);
+
+//cambia atributos de proceso que pasará a estar RUNNING
+Process* select_process(Process* process);
+
 void write_output(char* name, Process* process);
-void search_process(int len, char*** sorted_array, Queue** colas, int ciclo, int indice_final);
 void create_csv(char* output);
 void write_csv(Process* pro, char* output);

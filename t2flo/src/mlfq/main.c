@@ -50,6 +50,7 @@ int main(int argc, char **argv)
       proceso_actual->tiempo_A ++;
       //proceso termina hay que ponerle finished
       if(proceso_actual->cycles==proceso_actual->cpu_time){
+        printf("CICLOS: %i, CPU TIME: %i\n\n", proceso_actual->cycles, proceso_actual->cpu_time);
         printf("%s termino\n", proceso_actual->name);        
         ocupado = 0;
         proceso_actual->state = FINISHED;
@@ -343,9 +344,6 @@ Process* out_cpu(Process* process){
   process->tiempo_B = 0;
   return process;
 };
-
-
-
 
 
 void create_csv(char* output) {

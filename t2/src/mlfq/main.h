@@ -17,7 +17,11 @@ typedef struct process{
     //cantidad de ciclos que estara waiting antes de estar ready (tiempo B)
     int waitd;
     //recien llegado
+    int waitd_original;
     int first_time;
+
+    int quantum;
+    int no_wait;
 
     //cuantas veces fue elegido para ejecutar la cpu
     int turns;
@@ -30,19 +34,9 @@ typedef struct process{
     //suma del tpo que estuvo waiting y ready (desde que llega hasta que está finished)
     int waiting_time;
 
-    //tiempo total que ha ejecutado acumulado
-    int cpu_time;  
-    //tiempo total que estuvo waiting acumulado
-    int io_time;
-
-
-    //Estos se reinician
-    int tiempo_S;
+    int S;
    
-    //tiempo que lleva en cpu antes de ceder
-    int tiempo_A;
-    //tiempo que lleva waiting antes de ceder
-    int tiempo_B;
+ 
 }Process;
 
 
@@ -80,7 +74,7 @@ Queue** search_process(int len, char*** sorted_array, Queue** colas, int ciclo) 
 Process* process_waiting(Process* process);
 
 //reinicia atributos cuando un proceso sale de la cpu (cede o interrumpido)
-Process* out_cpu(Process* process);
+Process* out_cpu(Process* process, int wait, int waitd);
 
 
 //cambia atributos de proceso que pasará a estar RUNNING

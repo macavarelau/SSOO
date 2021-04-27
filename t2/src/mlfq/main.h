@@ -37,6 +37,7 @@ typedef struct process{
 
 
     //Estos se reinician
+    int tiempo_S;
    
     //tiempo que lleva en cpu antes de ceder
     int tiempo_A;

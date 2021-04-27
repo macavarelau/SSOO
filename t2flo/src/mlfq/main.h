@@ -42,18 +42,16 @@ typedef struct process{
     int tiempo_A;
     //tiempo que lleva waiting antes de ceder
     int tiempo_B;
-} Process;
+}Process;
 
 
 typedef struct queue {
+    int n;
     int p;
     Process* fila[2048];
     
     int quantum;
-    //primera posición de la lista
-    int inicio;
-    //primer espacio libre        
-    int final;
+
 
 } Queue;
 
@@ -69,10 +67,13 @@ Queue** create_queues(int Q, int q);
 //crea un proceso
 Process* create_process(char** info);
 
+
 //pasa tiempo S y sube a la primera.
 Queue** first_priority(Queue** colas, Process* proceso);
 
-Queue** search_process(int len, char*** sorted_array, Queue** colas, int ciclo, int indice_final);
+
+Queue** search_process(int len, char*** sorted_array, Queue** colas, int ciclo) ;
+
 
 //cambia atributos de proceso que esta WAITING
 Process* process_waiting(Process* process);
@@ -80,9 +81,11 @@ Process* process_waiting(Process* process);
 //reinicia atributos cuando un proceso sale de la cpu (cede o interrumpido)
 Process* out_cpu(Process* process);
 
+
 //cambia atributos de proceso que pasará a estar RUNNING
 Process* select_process(Process* process);
-
+Queue** change_queue(Queue** colas, int origen, int destiny, int indice_proceso);
+Queue** cpu_to_queue(Queue** colas, Process* proceso, int destino);
 void write_output(char* name, Process* process);
 void create_csv(char* output);
 void write_csv(Process* pro, char* output);

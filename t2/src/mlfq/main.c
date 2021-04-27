@@ -26,18 +26,20 @@ int main(int argc, char **argv)
   Process* proceso_actual;
   
 
-  int ciclo=0, ocupado=0, procesos_terminados=0,indice_final=0;
+  int ciclo=0, ocupado=0, procesos_terminados=0;
   int procesos_totales = data->len;
 
  
-  while(procesos_terminados<procesos_totales){    
+  // while(ciclo<30)
+  while(procesos_terminados<procesos_totales)
+ {    
     printf("\n************************************\n");  
     printf("**************Ciclo: %i*************",ciclo); 
     printf("\n************************************\n\n");   
     
     printf("Procesos terminados: %i / %i\n",procesos_terminados,procesos_totales);   
     
-    colas = search_process(data->len, sorted_array, colas, ciclo, indice_final);  
+    colas = search_process(data->len, sorted_array, colas, ciclo);  
     
 
 
@@ -50,7 +52,6 @@ int main(int argc, char **argv)
       proceso_actual->tiempo_A ++;
       //proceso termina hay que ponerle finished
       if(proceso_actual->cycles==proceso_actual->cpu_time){
-        printf("CICLOS: %i, CPU TIME: %i\n\n", proceso_actual->cycles, proceso_actual->cpu_time);
         printf("%s termino\n", proceso_actual->name);        
         ocupado = 0;
         proceso_actual->state = FINISHED;
@@ -58,9 +59,12 @@ int main(int argc, char **argv)
         //calcular turnaround time;
         proceso_actual->turnaround_time = ciclo - proceso_actual->start;
         //ACA ESCRIBIR PROCESO EN ARCHIVO DE OUTPUT
-        write_csv(proceso_actual, output);
+        write_csv(proceso_actual, output); 
         
         free(proceso_actual);
+        if(procesos_terminados==procesos_totales){
+          break;
+        }
         
         
          
@@ -71,25 +75,21 @@ int main(int argc, char **argv)
         printf("%s consumió su quantum\n",proceso_actual->name);
         ocupado=0;
         proceso_actual->interruptions++;
-        printf("cpu time: %i, tiempo_a: %i", proceso_actual->cycles, proceso_actual->tiempo_A);
-        
-        //controlamos caso borde en que el quantum termina al mismo tiempo que cede la cpu
-        if (proceso_actual->tiempo_A==proceso_actual->wait){
-          proceso_actual->state = WAITING;
-        }
-        else{
-          proceso_actual->state = READY; 
-        }
         proceso_actual = out_cpu(proceso_actual);    
+
+        //controlamos caso borde en que el quantum termina al mismo tiempo que cede la cpu
+         if (proceso_actual->tiempo_A==proceso_actual->wait){
+           proceso_actual->state = WAITING;           
+         }else{
+           proceso_actual->state = READY; 
+         }
 
 
         //Si es posible baja al proceso a una cola de menor prioridad 
-        if (proceso_actual->p < Q){
-        proceso_actual->p++;
-        }        
-        colas[proceso_actual->p]->fila[colas[proceso_actual->p]->final] = proceso_actual;
-        colas[proceso_actual->p]->final++;
-
+        if (proceso_actual->p < Q-1){
+          proceso_actual->p++;
+        }
+        colas = cpu_to_queue(colas, proceso_actual, proceso_actual->p);
  
       //si el proceso cede la cpu
       }else if (proceso_actual->tiempo_A==proceso_actual->wait){
@@ -102,10 +102,10 @@ int main(int argc, char **argv)
         
         //Si es posible baja al proceso a una cola de mayor prioridad;
         if (proceso_actual->p > 0){
-          proceso_actual->p--;   
+          proceso_actual->p--;           
         }
-        colas[proceso_actual->p]->fila[colas[proceso_actual->p]->final] = proceso_actual;
-        colas[proceso_actual->p]->final++;
+        colas = cpu_to_queue(colas, proceso_actual, proceso_actual->p);
+
 
       }else{
         printf("Proceso ejecutando: %s\n",proceso_actual->name);
@@ -125,25 +125,20 @@ int main(int argc, char **argv)
 
     Process* proceso;
     for (int i = 0; i < Q ;i++){              
-      for(int j = colas[i]->inicio; j<colas[i]->final; j++ ){
+      for(int j = 0; j < colas[i]->n; j++ ){
 
         //si la cola no esta vacia
-        if(colas[i]->inicio!=colas[i]->final){  
+        if(colas[i]->n > 0){  
             //voy sacando los procesos en orden  
             //en las colas solo estan waiting o redi porque el finished se libera y el que esta running se saca de su cola            
             proceso = colas[i]->fila[j];          
             proceso->waiting_time ++;
               //chequeamos si paso su tiempo S
             if (ciclo - proceso->start > S && proceso->p!=0){
-              //AQUI EXPLOTA! HAY QUE VER COMO VER EL TIEMPO;
-              //sacarlo de su cola
-              printf("PROCESO: %s EXPLOTA?", proceso->name);
-              colas[proceso->p]->fila[colas[proceso->p]->inicio%N] = 0;
-              colas[proceso->p]->inicio ++;
-
-              //meterlo a la primero cola en la ultima pos
-              colas[0]->fila[colas[0]->final%N] = proceso;
-              colas[0]->final++;
+              
+              colas = change_queue(colas, proceso->p, 0, j);
+              proceso->p = 0;
+              
             }
             
             if(proceso->state==WAITING){ 
@@ -154,6 +149,7 @@ int main(int argc, char **argv)
 
             if(proceso->state==READY && !ocupado ){
               //modifico atributos del proceso que pasa a cpu
+        
               proceso = select_process(proceso); 
               //lo saco de la cola en que estaba
               colas[i] = process_to_cpu(colas[i], j);   
@@ -178,7 +174,7 @@ int main(int argc, char **argv)
 
   //libero la memoria de procesos, colas y el input file.  
   for( int i = 0 ; i < Q ; i++ ){ 
-    for( int j = colas[i]->inicio ; j < colas[i]->final ; j++ ) {
+    for( int j = 0 ; j < colas[i]->n ; j++ ) {
       free(colas[i]->fila[j]);
     }    
     free(colas[i]);    
@@ -199,10 +195,11 @@ void print_colas(Queue** colas, int Q){
   char lista[4][10] = {"RUNNING","READY","WAITING","FINISHED"};
   for (int i = 0; i<Q ; i++){
     printf("Procesos en cola %i:\n",i);
-    if(colas[i]->inicio==colas[i]->final){
-      printf("NONE");
+    if(colas[i]->n == 0){
+      printf("NONE\n");
     }
-    for(int j = colas[i]->inicio; j<colas[i]->final ; j++){
+
+    for(int j = 0; j<colas[i]->n ; j++){
       proceso = colas[i]->fila[j];
       printf("- %s [%s]\n",proceso->name, lista[proceso->state]);
     }
@@ -236,8 +233,8 @@ Queue** create_queues(int Q, int q){
     colas[i]= malloc(sizeof(Queue));
     colas[i]->p = Q-1-i;
     colas[i]->quantum = (Q - colas[i]->p)*q;
-    colas[i]->inicio=0;
-    colas[i]->final=0;
+  
+    colas[i]->n = 0;
   }
   return colas;
   
@@ -296,43 +293,49 @@ Process* select_process(Process* proceso){
     return proceso;
 };
 Queue* process_to_cpu(Queue* cola, int indice_proceso){
-    cola->inicio++;
-    cola->fila[indice_proceso] = 0;  
+    //lo sacamos de la cola y rellenamos los espacios
+    cola->n --;   
+    for(int i = indice_proceso; i < cola->n - indice_proceso ;i++){
+      cola->fila[i]=cola->fila[i+1];
+    }
     return cola;
 }
 
 
+Queue** change_queue(Queue** colas, int origen, int destino, int indice_proceso){
+  //en la cola origen
+  Process* proceso = colas[origen]->fila[indice_proceso];
+  colas[origen]->n --; 
+  for(int i = indice_proceso; i < colas[origen]->n - indice_proceso ;i++){
+      colas[origen]->fila[i]=colas[origen]->fila[i+1];
+    }
+  //cola destino
+  colas[destino]->fila[colas[destino]->n]=proceso;
+  colas[destino]->n++;  
+  return colas;
+
+}
+Queue** cpu_to_queue(Queue** colas, Process* proceso, int destino){
+  colas[destino]->fila[colas[destino]->n]=proceso;
+  colas[destino]->n++;  
+  return colas;
+
+}
 
 
-
-
-Queue** search_process(int len, char*** sorted_array, Queue** colas, int ciclo, int indice_final) {
+Queue** search_process(int len, char*** sorted_array, Queue** colas, int ciclo) {
 
   int llegada;
-  //static int actual_pos = 0;
-
   for(int i=process_list_index; i<len; i++) {
 
     llegada = atoi(sorted_array[i][2]);
-    //printf("LLEGADA DE: %s CON TIEMPO: %s\n", sorted_array[i][0],sorted_array[i][2]);
-    //printf("\n");
-    //si corresponde creamos el proceso y lo metemos en la primera fila al final
     if(ciclo==llegada){  
       
-      //printf("FINAL COLA %i\n", colas[0]->final % N );
-      //printf("EL PROCESO: %s LLEGA PRIMERO\n", sorted_array[i][0]);
       Process* pro = create_process(sorted_array[i]);   
       printf("Proceso: %s entra a la cola 0\n",pro->name);               
-      //siempre llegan a la primera cola al primer espacio vacio
-      indice_final = colas[0]->final%N;
-      colas[0]->fila[indice_final] = pro;
-      colas[0]->final++;
-      //actual_pos++;      
-      //printf("ITERACIÓN: %i & CICLO: %i\n", i, ciclo);
-
+      colas[0]->fila[colas[0]->n] = pro;
+      colas[0]->n++;      
     } else if(ciclo<llegada){
-      //guardo la posición para paartir iterando desde aqui la prox vez
-      //me salgo tmb pq los siguientes no me interesan en este ciclo
       process_list_index = i;
       return colas;
     }     
@@ -351,14 +354,14 @@ Process* out_cpu(Process* process){
 };
 
 
+
 void create_csv(char* output) {
   FILE *fpt;
   fpt = fopen(output, "w+");
   fclose(fpt);
 }
 
-void write_csv(Process* pro, char* output) {
-  // FILE *file = fopen(fileName, "r");
+void write_csv(Process* pro, char* output) { 
   FILE *file = fopen(output, "a+" );
   fprintf(file,"%s,%i,%i,%i,%i,%i\n", pro->name,pro->turns,pro->interruptions,pro->turnaround_time,pro->response_time,pro->waiting_time);
   fclose(file);

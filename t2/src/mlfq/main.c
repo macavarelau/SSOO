@@ -28,6 +28,7 @@ int main(int argc, char **argv)
   
 
   int ciclo=0, ocupado=0, procesos_terminados=0, wait_original=0, waitd_original=0;
+
   int procesos_totales = data->len;
 
  
@@ -47,127 +48,106 @@ int main(int argc, char **argv)
     Process* proceso;
     int proceso_elegido = 0, cola_elegida=0, nuevo=0;
 
-    for (int i = 0; i < Q ;i++){      
-
+    for (int i = 0; i < Q ;i++){    
       for(int j = 0; j < colas[i]->n; j++ ){
-
-        //si la cola no esta vacia
         if(colas[i]->n > 0){  
-            //voy sacando los procesos en orden  
-            //en las colas solo estan waiting o redi porque el finished se libera y el que esta running se saca de su cola            
-            proceso = colas[i]->fila[j];  
-            proceso->S++;   
-                
-            
-            
-            
-            if(proceso->state==WAITING){ 
-              //modifico atributos del proceso (podría pasar a ready por eso no hay un else if despues)
-              proceso = process_waiting(proceso);   
-            
-            }
 
-            if(proceso->state==READY && !ocupado ){
-              //modifico atributos del proceso que pasa a cpu
+            proceso = colas[i]->fila[j];  
+            proceso->waiting_time ++;   
+                      
+            if(proceso->state==WAITING ){             
+              proceso->waitd --; 
+              if(proceso->waitd<=0){
+                proceso->state = READY;
+                proceso->waitd = proceso->waitd_original;
+
+              }
+            }
+            else if(proceso->state==READY && !ocupado ){
               ocupado = 1;    
               nuevo = 1;
+              proceso->waiting_time --;
               proceso = select_process(proceso); 
               //lo saco de la cola en que estaba             
-              proceso_actual=proceso;               
+              proceso_actual=proceso;                         
               cola_elegida = i;
-              proceso_elegido = j;   
-              proceso->waiting_time --;                 
-
-
-            } else if (proceso->S > S && proceso->p!=0 ){
-              
-              colas = change_queue(colas, proceso->p, 0, j);
-              proceso->p = 0;
-              proceso->S = 0;
-              j--;
-              
-            }
-            proceso->waiting_time ++;
-            
-            
-            
+              proceso_elegido = j;                 
+            }       
+         
           }
         }
       }
-    
+
+ 
     if (nuevo){
-      printf("entraentra\n");
-      ocupado = 1;
+      printf("Entra %s\n", proceso_actual->name);
       colas[cola_elegida] = process_to_cpu(colas[cola_elegida], proceso_elegido); 
       nuevo=0;
+      proceso_actual->waitd = waitd_original;
       proceso_actual->quantum = colas[cola_elegida]->quantum;
-      if (proceso_actual->wait==0){
+      if (proceso_actual->wait_original==0){
         proceso_actual->no_wait=1;
       }
-      wait_original=proceso_actual->wait;
-      waitd_original=proceso_actual->waitd;
-      proceso_actual->S--;
+
       }
 
+    
+    
+
+
+
     if(!HIDE_PRINTS){ print_colas(colas,Q); }  
-
-
-
-
-
-
-
+   
+       
+      
 
 
     
     if(ocupado){
-      if(!HIDE_PRINTS){ printf("    [CPU OCUPADA]\n"); }
+      if(!HIDE_PRINTS){ printf("    [CPU OCUPADA]\n"); }  
 
-    
       proceso_actual->cycles --;
+      proceso_actual->quantum --;
       if(proceso_actual->no_wait==0){    
         proceso_actual->wait --;
       }
-      proceso_actual->S ++;
-      proceso_actual->quantum --;
-      
 
-      
-      if(proceso_actual->cycles==0){
-        
-        if(proceso_actual->quantum==0){
-          proceso_actual->interruptions++;
-        }
+      if(proceso_actual->cycles==0){   
 
-        if(!HIDE_PRINTS){ printf("%s termino\n", proceso_actual->name);  }      
+          if(proceso_actual->quantum==0){
+            proceso_actual->interruptions++;
+          }
+
+        if(!HIDE_PRINTS){ printf("%s termino\n", proceso_actual->name);  }     
+
         ocupado = 0;
         proceso_actual->state = FINISHED;
         procesos_terminados++;
-        //calcular turnaround time;
-        proceso_actual->turnaround_time = ciclo + 1  - proceso_actual->start;
-        //ACA ESCRIBIR PROCESO EN ARCHIVO DE OUTPUT
-        write_csv(proceso_actual, output); 
-        
+        proceso_actual->turnaround_time = ciclo + 1 - proceso_actual->start;
+  
+        write_csv(proceso_actual, output);         
         free(proceso_actual);
+
         if(procesos_terminados==procesos_totales){
           break;
-        }      
+          }      
 
-      }
-      //si el proceso uso todo su quantum
-      else if(proceso_actual->quantum==0){
+      }else if(proceso_actual->quantum==0){
+
           if(!HIDE_PRINTS){ printf("%s consumió su quantum\n",proceso_actual->name); }
+
           ocupado=0;
           proceso_actual->interruptions++;
           
-
-          //controlamos caso borde en que el quantum termina al mismo tiempo que cede la cpu
-          if (proceso_actual->wait==0 && !proceso_actual->no_wait){
-            proceso_actual->state = WAITING;           
+          if (proceso_actual->wait==0 && !proceso_actual->no_wait){            
+            proceso_actual->state = WAITING;   
+            proceso_actual->wait = proceso_actual->wait_original;
+            proceso_actual->waitd = proceso_actual->waitd_original;
+    
+          
           }else{
             proceso_actual->state = READY; 
           }
-          proceso_actual = out_cpu(proceso_actual, wait_original, waitd_original);   
 
 
           //Si es posible baja al proceso a una cola de menor prioridad 
@@ -178,24 +158,30 @@ int main(int argc, char **argv)
  
       //si el proceso cede la cpu
       }else if (proceso_actual->wait==0 && !proceso_actual->no_wait){
+
           if(!HIDE_PRINTS){ printf("%s cedio cpu\n",proceso_actual->name);}
+
           ocupado=0;
           proceso_actual->state = WAITING;
-          proceso_actual = out_cpu(proceso_actual, wait_original, waitd_original);
+          proceso_actual->wait = proceso_actual->wait_original;
+          proceso_actual->waitd = proceso_actual->waitd_original;
+    
+    
           
           //Si es posible baja al proceso a una cola de mayor prioridad;
           if (proceso_actual->p > 0){
             proceso_actual->p--;           
           }
           colas = cpu_to_queue(colas, proceso_actual, proceso_actual->p);
-
-
       }
+    
+      
     }
 
-  
-      
-      if(ocupado){
+    
+
+        
+    if(ocupado){
         if(!HIDE_PRINTS){
             printf("Proceso ejecutando: %s\n",proceso_actual->name);
             printf("Cola: %i \n",proceso_actual->p);
@@ -203,21 +189,52 @@ int main(int argc, char **argv)
             printf("Wait restante: %i\n",proceso_actual->wait);
             printf("Interrupciones: %i\n",proceso_actual->interruptions);
             printf("Turnos: %i\n",proceso_actual->turns);
+            printf("Wait %i / %i \n",proceso_actual->wait, proceso_actual->wait_original);
+            printf("Quantum %i / %i \n",proceso_actual->quantum, colas[proceso_actual->p]->quantum);
             }
-
       
-
     }else{
 
       if(!HIDE_PRINTS){ printf("   [CPU LIBRE] \n"); }
     }  
 
+
+
+
+   
+    if(ciclo>=S && ciclo%S==0){
+    printf("caca\n");
+      for (int i = 1; i < Q ;i++){      
+        for(int j = 0; j < colas[i]->n; j++ ){
+          if(colas[i]->n > 0){  
+              proceso = colas[i]->fila[j];
+              proceso->p = 0;
+              colas[0]->fila[colas[0]->n] = proceso;
+              colas[0]->n++;
+              colas[i]->fila[j]=0;              
+              }              
+         }
+         colas[i]->n = 0;                
+      }
+    }
+
+    ciclo++;
+
     
 
 
- 
+    
+    
 
-      ciclo++;
+
+  
+    
+ 
+    
+
+    
+
+    
 
 
     }
@@ -308,7 +325,8 @@ Process* create_process(char** info){
   pro->pid = atoi(info[1]);
   pro->start = atoi(info[2]);
   pro->cycles = atoi(info[3]);
-  pro->wait = atoi(info[4]);
+  pro->wait_original = atoi(info[4]);
+  pro->wait = pro->wait_original;
   pro->waitd_original = atoi(info[5]);
   pro->waitd = pro->waitd_original;
   pro->quantum = 0;
@@ -330,16 +348,7 @@ Process* create_process(char** info){
 
 
 
-Process* process_waiting(Process* proceso){
-  proceso->waitd --;
-  if(proceso->waitd==0){
-    proceso->state = READY;
-    proceso->waitd = proceso->waitd_original;
 
-  }
-  return proceso;
-
-};
 
 Process* select_process(Process* proceso){    
     proceso->state = RUNNING;            
@@ -352,13 +361,12 @@ Process* select_process(Process* proceso){
     }
     return proceso;
 };
+
 Queue* process_to_cpu(Queue* cola, int indice_proceso){
     //lo sacamos de la cola y rellenamos los espacios
     cola->n --; 
-    for(int i = indice_proceso; i < cola->n ; i++){
-    
-      cola->fila[i]=cola->fila[i+1];    
-      
+    for(int i = indice_proceso; i < cola->n ; i++){    
+      cola->fila[i]=cola->fila[i+1];          
     }
     return cola;
 }
@@ -412,11 +420,6 @@ Queue** search_process(int len, char*** sorted_array, Queue** colas, int ciclo) 
 }      
 
 
-Process* out_cpu(Process* process, int wait, int waitd){
-  process->wait = wait;
-  process->waitd = waitd;
-  return process;
-};
 
 
 

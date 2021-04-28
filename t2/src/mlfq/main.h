@@ -17,6 +17,7 @@ typedef struct process{
     //cantidad de ciclos que estara waiting antes de estar ready (tiempo B)
     int waitd;
     //recien llegado
+    int wait_original;
     int waitd_original;
     int first_time;
 
